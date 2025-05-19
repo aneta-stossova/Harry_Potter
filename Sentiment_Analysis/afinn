@@ -1,0 +1,17 @@
+import pandas as pd
+from afinn import Afinn
+
+dialogues = pd.read_csv("CSV_PostgreSQL/Raw_data/Dialogue.csv", encoding="ISO-8859-1")
+fact_dialogue = pd.read_csv("CSV_PostgreSQL/CSV_draft/fact_dialogue_draft.csv", encoding="ISO-8859-1")
+
+# Afinn sentiment analyzer
+afinn = Afinn()
+
+dialogues["sentiment_afinn"] = dialogues["Dialogue"].apply(afinn.score)
+
+sentiment_map = dict(zip(dialogues["Dialogue ID"], dialogues["sentiment_afinn"]))
+
+fact_dialogue["sentiment_afinn"] = fact_dialogue["id_dialogue"].map(sentiment_map)
+
+fact_dialogue.to_csv("CSV_PostgreSQL/CSV_final/fact_dialogue_final.csv", index=False)
+print("The table was successfully created")
