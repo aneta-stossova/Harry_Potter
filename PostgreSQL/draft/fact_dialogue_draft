@@ -1,0 +1,52 @@
+-- -----------------------------------------------------------
+-- Script: Create draft table raw_data.fact_dialogue_draft
+-- Description: Draft fact table for dialogue analysis.
+-- Includes dialogue ID, character, scene, place, sentiment (Afinn placeholder),
+-- dialogue length, love word count and timestamps.
+-- NRC sentiment is modeled separately via bridge_dialogue_emolex.
+-- -----------------------------------------------------------
+
+-- Drop the table if it exists
+DROP TABLE IF EXISTS raw_data.fact_dialogue_draft;
+
+-- Create draft fact table with id_dialogue jako prvním sloupcem
+CREATE TABLE IF NOT EXISTS raw_data.fact_dialogue_draft (
+    id_dialogue      INT,
+    id_character     INT,
+    id_scene         INT,
+    id_place         INT,
+    sentiment_afinn  INT,
+    dialogue_length  INT,
+    love_count       INT,
+    inserted_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Populate draft table with calculated values
+INSERT INTO raw_data.fact_dialogue_draft (
+    id_dialogue,
+    id_character,
+    id_scene,
+    id_place,
+    sentiment_afinn,
+    dialogue_length,
+    love_count
+)
+SELECT 
+    COALESCE(d.dialogue_id, -1)       AS id_dialogue,
+    COALESCE(c.id_character, -1)      AS id_character,
+    COALESCE(s.id_scene, -1)          AS id_scene,
+    COALESCE(p.id_place, -1)          AS id_place,
+    NULL                               AS sentiment_afinn,
+    CARDINALITY(string_to_array(d.dialogue, ' ')) AS dialogue_length,
+    regexp_count(
+      LOWER(d.dialogue),
+      '\m(love|loving|lover|loved|beloved)\M'
+    )                                  AS love_count
+FROM raw_data.dialogues d
+LEFT JOIN hp_final.dim_character c 
+  ON d.character_id = c.id_character
+LEFT JOIN hp_final.dim_scene s 
+  ON d.chapter_id = s.id_scene
+LEFT JOIN hp_final.dim_place p 
+  ON d.place_id = p.id_place;
